@@ -95,7 +95,7 @@
               </div>
 
               <!-- Serial Number -->
-              <div class="flex flex-col gap-2 col-span-2">
+              <div v-if="form.inputMode === 'selection'" class="flex flex-col gap-2 col-span-2">
                 <label for="sn" class="text-xs font-bold uppercase tracking-wider text-surface-600"
                   >Serial Number (SN)</label
                 >
@@ -109,8 +109,56 @@
                 />
               </div>
 
+              <div v-else-if="form.inputMode === 'batch'" class="grid grid-cols-3 gap-8 col-span-2">
+                <div>
+                  <label
+                    for="batch"
+                    class="text-xs font-bold uppercase tracking-wider text-surface-600"
+                    >Master SN</label
+                  >
+                  <InputText
+                    v-model="batchSN"
+                    id="batch"
+                    placeholder="e.g. YJM261908010A"
+                    size="small"
+                    class="w-full"
+                    @change="buildSNList"
+                  />
+                </div>
+                <div>
+                  <label
+                    for="batch"
+                    class="text-xs font-bold uppercase tracking-wider text-surface-600"
+                    >Start</label
+                  >
+                  <InputNumber
+                    v-model="batchStart"
+                    id="batch"
+                    size="small"
+                    class="w-full"
+                    showButtons
+                    @change="buildSNList"
+                  />
+                </div>
+                <div>
+                  <label
+                    for="batch"
+                    class="text-xs font-bold uppercase tracking-wider text-surface-600"
+                    >End</label
+                  >
+                  <InputNumber
+                    v-model="batchEnd"
+                    id="batch"
+                    size="small"
+                    class="w-full"
+                    showButtons
+                    @change="buildSNList"
+                  />
+                </div>
+              </div>
+
               <!-- Quantities Grid -->
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="flex flex-col gap-2">
                   <label
                     for="batch"
@@ -188,7 +236,7 @@
                 <label class="text-xs font-bold uppercase tracking-wider text-surface-600"
                   >Information</label
                 >
-                <div class="w-full flex-col gap-4">
+                <div class="w-full flex-col gap-4 h-full overflow-auto">
                   <div class="flex items-center gap-2">
                     <span class="font-semibold text-surface-700 text-sm">Machine:</span>
                     <span class="text-sm text-primary-600">{{ form.machine?.name }}</span>
@@ -217,10 +265,10 @@
                     <span class="font-semibold text-surface-700 text-sm">PCS per Board:</span>
                     <span class="text-sm text-primary-600">{{ form.pcs }}</span>
                   </div>
-                  <div class="flex flex-col">
+                  <div v-if="sns.length > 0" class="flex flex-col">
                     <span class="font-semibold text-surface-700 text-sm">SN list:</span>
-                    <ul class="text-sm text-primary-600 list-disc pl-8">
-                      <li v-for="sn in sns">{{ sn }}</li>
+                    <ul class="text-sm text-primary-600 list-disc pl-8 max-h-40 overflow-auto">
+                      <li v-for="sn in sns" :key="sn">{{ sn }}</li>
                     </ul>
                   </div>
                 </div>
@@ -234,7 +282,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Select from 'primevue/select'
@@ -258,7 +306,9 @@ const form = reactive({
 
 // Options
 const machines = ref([])
-const sns = ref([])
+const batchSN = ref('')
+const batchStart = ref(1)
+const batchEnd = ref(1)
 
 const inputModeOptions = ref([
   { label: 'Selection', value: 'selection' },
@@ -292,16 +342,40 @@ const fetchMachines = async () => {
 }
 
 const handleGenerate = async () => {
+  console.log('Form:', form)
   const result = await window.api.createFileContent(JSON.stringify(form))
   if (!result.success) {
     toast.error(result.message)
   } else {
     toast.success('Generated files successfully')
+    console.log(result.data)
   }
 }
 
+const sns = computed(() => {
+  if (form.inputMode === 'selection') {
+    return form.sn.split(',').filter((sn) => sn.trim() !== '')
+  }
+  if (form.inputMode === 'batch') {
+    if (!batchSN.value?.trim()) return []
+    if (batchStart.value == null || batchEnd.value == null || batchStart.value > batchEnd.value) {
+      toast.error('Start must be less than or equal to End')
+      batchStart.value = 1
+      batchEnd.value = 1
+      return []
+    }
+    const snsList = Array.from(
+      { length: batchEnd.value - batchStart.value + 1 },
+      (_, i) => `${batchSN.value}${String(batchStart.value + i).padStart(5, '0')}`
+    )
+    form.sn = snsList.join(',')
+    return snsList
+  }
+  return []
+})
+
 const getSnInfo = () => {
-  sns.value=form.sn.split(',')
+  // sns.value is now a computed property, no need to update it here
 }
 
 onMounted(() => {

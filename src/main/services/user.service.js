@@ -5,6 +5,9 @@ const user = authService.user;
 
 const userService = {
     getAllUsers: () => {
+        if(user.role !== 'ADMIN') {
+            return { success: false, message: 'Forbidden' }
+        }
         const result = db.prepare(`SELECT id, username, name, role, created_at FROM users ORDER BY created_at DESC`).all()
         if (!result) {
             return { success: false, message: 'Error fetching users' }

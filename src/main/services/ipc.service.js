@@ -70,6 +70,17 @@ ipcMain.handle('file:createFileContent', async (_, data) => {
   if(!machine){
     return { success: false, message: 'Missing machine'}
   }
-  return fileService[machine.name].createFileContent(data)
+  switch(machine.name){
+    case 'HOLLY':
+      return fileService[machine.name].createFileContentHolly(data)
+    case 'JUTZE-V1':
+      return fileService[machine.name].createFileContentJutzeV1(data)
+    case 'TRI':
+      return fileService[machine.name].createFileContentTri(data)
+    case 'SPI-KY':
+      return fileService[machine.name].createFileContentSpi(data)
+    default:
+      return { success: false, message: 'Machine not supported'}
+  }
 })
 
